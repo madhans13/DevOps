@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-react-nginx
+  namespace: demo-app
+  labels:
+    app: client-react-nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: client-react-nginx
+  template:
+    metadata:
+      labels:
+        app: client-react-nginx
+    spec:
+      containers:
+        - name: client-react-nginx
+          image: madhan13/ifixitt-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: nginx-conf
