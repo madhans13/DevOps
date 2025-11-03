@@ -870,8 +870,165 @@ You: Type "https://github.com" in browser
 
 ---------------------------
 
-🔍 Practical Examples
-Example 1: Watching a YouTube Video
+## 🔧 Hardware Filtering (Continued)
+
+### Network Card Architecture (Continued)
+
+```
+                   NO           YES
+                    ↓             ↓
+                 [DROP]    [Buffer Memory]
+                                  ↓
+                           [DMA to RAM]
+                                  ↓
+                         [Interrupt CPU] ← Only if match!
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+                              ↓
+┌──────────────────────────────────────────────────────────┐
+│                    CPU / OPERATING SYSTEM                │
+│                                                          │
+│  - Woken up by interrupt                                │
+│  - Processes packet (check IP, Port)                    │
+│  - Delivers to application                              │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Performance Comparison
+
+**MAC Filtering (Hardware):**
+```
+├─ Speed: ~5 nanoseconds per packet
+├─ Location: Network card chip
+├─ CPU usage: Zero
+└─ Energy: Negligible
+```
+
+**IP Filtering (Software):**
+```
+├─ Speed: ~500 nanoseconds per packet
+├─ Location: CPU/OS kernel
+├─ CPU usage: Significant
+└─ Energy: High
+```
+
+**Hardware is ~100x faster and uses minimal power!**
+
+### Promiscuous Mode
+
+Special mode where network card accepts ALL packets:
+
+```
+Normal Mode:
+├─ Only accepts packets with matching MAC
+└─ Used by: Regular devices
+
+Promiscuous Mode:
+├─ Accepts ALL packets regardless of MAC
+├─ Used by: Network monitoring tools (Wireshark)
+├─ Security tools
+└─ Network debugging
+```
+
+**Enable promiscuous mode:**
+```bash
+# Linux
+sudo ifconfig eth0 promisc
+
+# Using tcpdump (auto-enables)
+sudo tcpdump -i eth0
+```
+
+---
+
+## 📋 Protocol Summary
+
+### Complete Protocol Stack
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ APPLICATION LAYER                                           │
+├─────────────────────────────────────────────────────────────┤
+│ HTTP/HTTPS  │ Web browsing                                  │
+│ FTP         │ File transfer                                 │
+│ SMTP        │ Email sending                                 │
+│ DNS         │ Domain name resolution                        │
+│ SSH         │ Secure remote access                          │
+├─────────────────────────────────────────────────────────────┤
+│ TRANSPORT LAYER                                             │
+├─────────────────────────────────────────────────────────────┤
+│ TCP         │ Reliable, ordered delivery                    │
+│             │ Connection-oriented                           │
+│             │ Used by: HTTP, HTTPS, FTP, SSH                │
+│ UDP         │ Fast, unreliable delivery                     │
+│             │ Connectionless                                │
+│             │ Used by: DNS, streaming, gaming               │
+├─────────────────────────────────────────────────────────────┤
+│ NETWORK LAYER                                               │
+├─────────────────────────────────────────────────────────────┤
+│ IP (IPv4)   │ 32-bit addresses (192.168.1.1)               │
+│ IP (IPv6)   │ 128-bit addresses (2001:db8::1)              │
+│ ICMP        │ Error messages, ping                          │
+│ ARP         │ IP to MAC address resolution                  │
+├─────────────────────────────────────────────────────────────┤
+│ DATA LINK LAYER                                             │
+├─────────────────────────────────────────────────────────────┤
+│ Ethernet    │ Wired networks                                │
+│ WiFi        │ Wireless networks (802.11a/b/g/n/ac/ax)      │
+│ PPP         │ Point-to-point connections                    │
+├─────────────────────────────────────────────────────────────┤
+│ PHYSICAL LAYER                                              │
+├─────────────────────────────────────────────────────────────┤
+│ Radio waves │ WiFi, Bluetooth, cellular                     │
+│ Electrical  │ Ethernet cables                               │
+│ Optical     │ Fiber optic cables                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### TCP vs UDP
+
+| Feature | TCP | UDP |
+|---------|-----|-----|
+| **Reliability** | Guaranteed delivery | No guarantee |
+| **Ordering** | Packets arrive in order | May arrive out of order |
+| **Speed** | Slower (overhead) | Faster (minimal overhead) |
+| **Connection** | Connection-oriented (handshake) | Connectionless |
+| **Error checking** | Extensive | Basic checksum only |
+| **Use cases** | Web, email, file transfer | Streaming, gaming, DNS |
+| **Header size** | 20-60 bytes | 8 bytes |
+| **Flow control** | Yes | No |
+
+### TCP Three-Way Handshake
+
+```
+Client                                    Server
+  │                                         │
+  │         1. SYN (seq=100)               │
+  │──────────────────────────────────────→│
+  │                                         │
+  │    2. SYN-ACK (seq=200, ack=101)       │
+  │←──────────────────────────────────────│
+  │                                         │
+  │         3. ACK (ack=201)               │
+  │──────────────────────────────────────→│
+  │                                         │
+  │     Connection Established! ✅          │
+  │                                         │
+```
+
+**Explanation:**
+1. **SYN**: Client initiates connection
+2. **SYN-ACK**: Server acknowledges and sends its own SYN
+3. **ACK**: Client acknowledges server's SYN
+4. **Data transfer begins**
+
+---
+
+## 🔍 Practical Examples
+
+### Example 1: Watching a YouTube Video
+
+```
 ┌─────────────────────────────────────────────────────────────┐
 │ Step 1: DNS Resolution                                      │
 ├─────────────────────────────────────────────────────────────┤
@@ -900,7 +1057,10 @@ Example 1: Watching a YouTube Video
 │ ├─ Buffering ahead: 30 seconds                             │
 │ └─ Adaptive quality based on bandwidth                     │
 └─────────────────────────────────────────────────────────────┘
-Full Packet Structure:
+```
+
+**Full Packet Structure:**
+```
 ┌─────────────────────────────────────────────────────────────┐
 │ [WiFi Header]                                               │
 │   Dest MAC: AA:BB:CC:DD:EE:FF (Router)                     │
@@ -921,7 +1081,13 @@ Full Packet Structure:
 │   [HTTP/2 Request]                                          │
 │     GET /watch?v=dQw4w9WgXcQ                               │
 └─────────────────────────────────────────────────────────────┘
-Example 2: Sending an Email
+```
+
+---
+
+### Example 2: Sending an Email
+
+```
 ┌─────────────────────────────────────────────────────────────┐
 │ Your Email Client → Gmail SMTP Server                       │
 ├─────────────────────────────────────────────────────────────┤
@@ -950,13 +1116,23 @@ Your Device (192.168.1.5:51234)
 Router (NAT: 103.50.20.15:14000)
     ↓ [Internet routing]
 Gmail Server (142.250.153.109:587)
-Example 3: Ping Command
+```
+
+---
+
+### Example 3: Ping Command
+
+```bash
 $ ping google.com
 
 PING google.com (142.250.185.46): 56 data bytes
 64 bytes from 142.250.185.46: icmp_seq=0 ttl=116 time=15.2 ms
 64 bytes from 142.250.185.46: icmp_seq=1 ttl=116 time=14.8 ms
-What happens:
+```
+
+**What happens:**
+
+```
 ┌─────────────────────────────────────────────────────────────┐
 │ ICMP Echo Request (Ping)                                    │
 ├─────────────────────────────────────────────────────────────┤
@@ -997,8 +1173,15 @@ TTL (Time To Live):
 ├─ Each router: TTL - 1
 ├─ Received: 116 (server responded)
 └─ Hops: 64 - 116 = ~12 routers
-Example 4: Multiple Devices on WiFi
-Scenario: 3 devices browsing different websites simultaneously
+```
+
+---
+
+### Example 4: Multiple Devices on WiFi
+
+**Scenario:** 3 devices browsing different websites simultaneously
+
+```
 ┌─────────────────────────────────────────────────────────────┐
 │                    ROUTER BROADCASTS                         │
 │                   (All devices receive)                      │
@@ -1028,17 +1211,28 @@ Packet 3: For Tablet (YouTube response)
 ├─ Laptop NIC: "No match → Drop" ❌
 ├─ Phone NIC:  "No match → Drop" ❌
 └─ Tablet NIC: "Match! → Pass to CPU" ✅
-Result: Each device only processes its own packets at the CPU level!
-🛠️ Troubleshooting Commands
-View Network Configuration
-Windows:
+```
+
+**Result:** Each device only processes its own packets at the CPU level!
+
+---
+
+## 🛠️ Troubleshooting Commands
+
+### View Network Configuration
+
+**Windows:**
+```cmd
 ipconfig /all          # Full network config
 ipconfig /displaydns   # DNS cache
 ipconfig /flushdns     # Clear DNS cache
 netstat -ano           # Active connections
 route print            # Routing table
 arp -a                 # ARP cache
-Mac/Linux:
+```
+
+**Mac/Linux:**
+```bash
 ifconfig               # Network interfaces
 ip addr                # IP addresses (Linux)
 ip route               # Routing table (Linux)
@@ -1049,8 +1243,12 @@ dig google.com         # DNS lookup
 nslookup google.com    # DNS lookup (Windows/Mac/Linux)
 traceroute google.com  # Route tracing
 ping -c 4 8.8.8.8      # Test connectivity
-Packet Capture
-Using tcpdump (Mac/Linux):
+```
+
+### Packet Capture
+
+**Using tcpdump (Mac/Linux):**
+```bash
 # Capture all traffic
 sudo tcpdump -i en0
 
@@ -1065,7 +1263,10 @@ sudo tcpdump -i en0 host 192.168.1.5
 
 # Show MAC addresses
 sudo tcpdump -e -i en0
-Using Wireshark:
+```
+
+**Using Wireshark:**
+```
 1. Select network interface (WiFi/Ethernet)
 2. Start capture
 3. Apply filters:
@@ -1074,29 +1275,24 @@ Using Wireshark:
    - ip.addr == 192.168.1.5
    - eth.addr == AA:BB:CC:DD:EE:01
 4. Analyze packet details in layers
-📊 Network Performance
-Bandwidth vs Latency
-Metric
-Definition
-Typical Values
-Affects
-Bandwidth
-Data transfer rate
-100 Mbps - 1 Gbps
-Download speed, streaming quality
-Latency
-Round-trip time
-10-50ms (local), 100-300ms (international)
-Gaming, video calls, responsiveness
-Jitter
-Latency variation
-<10ms (good)
-Voice/video quality
-Packet Loss
-Dropped packets
-<1% (good)
-Connection stability
-WiFi Standards
+```
+
+---
+
+## 📊 Network Performance
+
+### Bandwidth vs Latency
+
+| Metric | Definition | Typical Values | Affects |
+|--------|------------|----------------|---------|
+| **Bandwidth** | Data transfer rate | 100 Mbps - 1 Gbps | Download speed, streaming quality |
+| **Latency** | Round-trip time | 10-50ms (local), 100-300ms (international) | Gaming, video calls, responsiveness |
+| **Jitter** | Latency variation | <10ms (good) | Voice/video quality |
+| **Packet Loss** | Dropped packets | <1% (good) | Connection stability |
+
+### WiFi Standards
+
+```
 ┌──────────────────────────────────────────────────────────┐
 │ Standard │ Year │ Frequency │ Max Speed │ Range         │
 ├──────────────────────────────────────────────────────────┤
@@ -1107,78 +1303,122 @@ WiFi Standards
 │ 802.11ax │ 2019 │ 2.4/5 GHz │ 9.6 Gbps  │ ~120m outdoor│
 │ (WiFi 6) │      │           │           │              │
 └──────────────────────────────────────────────────────────┘
-🎓 Key Takeaways
-Critical Concepts to Remember
-Layered Architecture
-Each layer has specific responsibilities
-Lower layers serve upper layers
-Encapsulation: Each layer adds its header
-MAC Address = Physical, IP = Logical
-MAC: Hardware filtering (fast, local)
-IP: Software routing (global)
-ARP bridges the gap between them
-NAT Enables Internet Sharing
-One public IP, many private IPs
-Router translates addresses
-Port numbers identify connections
-Hardware Filtering is Essential
-Network card filters by MAC in hardware
-CPU only sees relevant packets
-Saves power and processing time
-Protocols Work Together
-HTTP/HTTPS: Application data
-TCP: Reliable delivery
-IP: Routing
-Ethernet/WiFi: Physical delivery
-Common Misconceptions
-❌ Wrong: "My device checks every packet on the network"
-✅ Right: Network card filters packets in hardware; CPU only sees packets with matching MAC
-❌ Wrong: "IP address is enough to send data"
-✅ Right: Need both IP (for routing) and MAC (for physical delivery)
-❌ Wrong: "NAT just forwards packets"
-✅ Right: NAT translates addresses and maintains state table
-❌ Wrong: "WiFi is less secure because everyone receives all packets"
-✅ Right: Hardware filtering + encryption makes WiFi secure
-📚 Further Learning
-Recommended Tools
-Wireshark: Packet analysis
-nmap: Network scanning
-iperf: Bandwidth testing
-netcat: Network debugging
-tcpdump: Command-line packet capture
-Topics to Explore Next
-VPN (Virtual Private Networks)
-Firewalls and port forwarding
-IPv6 addressing
-DNS deep dive (recursion, caching)
-Quality of Service (QoS)
-Network security (TLS/SSL, certificates)
-Software-Defined Networking (SDN)
-Load balancing and CDNs
-🎯 Practice Questions
-Beginner
-What's the difference between a MAC address and an IP address?
-Why do we need both TCP and IP?
-What happens when you type a URL in your browser?
-What is NAT and why is it necessary?
-Intermediate
-Explain the TCP three-way handshake
-How does hardware filtering improve network performance?
-What's the difference between a switch and a router?
-Trace a packet from your device to google.com and back
-Advanced
-How does the router know which internal device to send responses to?
-What happens if two devices have the same MAC address on a network?
-Explain how ARP poisoning works and how to prevent it
-Design a network for a small office with 50 devices
-✅ Checklist: Understanding Verification
+```
+
+---
+
+## 🎓 Key Takeaways
+
+### Critical Concepts to Remember
+
+1. **Layered Architecture**
+   - Each layer has specific responsibilities
+   - Lower layers serve upper layers
+   - Encapsulation: Each layer adds its header
+
+2. **MAC Address = Physical, IP = Logical**
+   - MAC: Hardware filtering (fast, local)
+   - IP: Software routing (global)
+   - ARP bridges the gap between them
+
+3. **NAT Enables Internet Sharing**
+   - One public IP, many private IPs
+   - Router translates addresses
+   - Port numbers identify connections
+
+4. **Hardware Filtering is Essential**
+   - Network card filters by MAC in hardware
+   - CPU only sees relevant packets
+   - Saves power and processing time
+
+5. **Protocols Work Together**
+   - HTTP/HTTPS: Application data
+   - TCP: Reliable delivery
+   - IP: Routing
+   - Ethernet/WiFi: Physical delivery
+
+### Common Misconceptions
+
+❌ **Wrong:** "My device checks every packet on the network"  
+✅ **Right:** Network card filters packets in hardware; CPU only sees packets with matching MAC
+
+❌ **Wrong:** "IP address is enough to send data"  
+✅ **Right:** Need both IP (for routing) and MAC (for physical delivery)
+
+❌ **Wrong:** "NAT just forwards packets"  
+✅ **Right:** NAT translates addresses and maintains state table
+
+❌ **Wrong:** "WiFi is less secure because everyone receives all packets"  
+✅ **Right:** Hardware filtering + encryption makes WiFi secure
+
+---
+
+## 📚 Further Learning
+
+### Recommended Tools
+- **Wireshark**: Packet analysis
+- **nmap**: Network scanning
+- **iperf**: Bandwidth testing
+- **netcat**: Network debugging
+- **tcpdump**: Command-line packet capture
+
+### Topics to Explore Next
+1. VPN (Virtual Private Networks)
+2. Firewalls and port forwarding
+3. IPv6 addressing
+4. DNS deep dive (recursion, caching)
+5. Quality of Service (QoS)
+6. Network security (TLS/SSL, certificates)
+7. Software-Defined Networking (SDN)
+8. Load balancing and CDNs
+
+---
+
+## 🎯 Practice Questions
+
+### Beginner
+1. What's the difference between a MAC address and an IP address?
+2. Why do we need both TCP and IP?
+3. What happens when you type a URL in your browser?
+4. What is NAT and why is it necessary?
+
+### Intermediate
+5. Explain the TCP three-way handshake
+6. How does hardware filtering improve network performance?
+7. What's the difference between a switch and a router?
+8. Trace a packet from your device to google.com and back
+
+### Advanced
+9. How does the router know which internal device to send responses to?
+10. What happens if two devices have the same MAC address on a network?
+11. Explain how ARP poisoning works and how to prevent it
+12. Design a network for a small office with 50 devices
+
+---
+
+## ✅ Checklist: Understanding Verification
+
 After studying this guide, you should be able to:
-[ ] Explain all 7 OSI layers and their functions
-[ ] Describe the complete flow of a network request
-[ ] Understand why hardware MAC filtering is necessary
-[ ] Explain how NAT works and why it's needed
-[ ] Differentiate between TCP and UDP
-[ ] Understand the relationship between IP and MAC addresses
-[ ] Trace a packet through each layer of the network stack
-[ ] Use basic network troubleshooting commands
-[ ] Explain why your CPU doesn't process every WiFi packet
+
+- [ ] Explain all 7 OSI layers and their functions
+- [ ] Describe the complete flow of a network request
+- [ ] Understand why hardware MAC filtering is necessary
+- [ ] Explain how NAT works and why it's needed
+- [ ] Differentiate between TCP and UDP
+- [ ] Understand the relationship between IP and MAC addresses
+- [ ] Trace a packet through each layer of the network stack
+- [ ] Use basic network troubleshooting commands
+- [ ] Explain why your CPU doesn't process every WiFi packet
+
+---
+
+**🎉 Congratulations!** You now have a comprehensive understanding of how network requests work from your device to servers and back!
+
+---
+
+*Last Updated: November 2025*  
+*Version: 2.0*
+
+**Contributing:** Found an error or want to add something? Feel free to submit improvements!
+
+**License:** This guide is free to use for educational purposes.
