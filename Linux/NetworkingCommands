@@ -1,0 +1,1857 @@
+# 🌐 Linux Networking Commands — Complete Guide
+
+A comprehensive guide to Linux networking commands for DevOps engineers, system administrators, and technical interviews.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)](https://www.linux.org/)
+[![Network](https://img.shields.io/badge/Networking-Essential-blue.svg)](https://www.linux.org/)
+
+---
+
+## 📚 Table of Contents
+
+- [Interface & IP Information](#-1️⃣-interface--ip-information)
+- [Connectivity Checks](#-2️⃣-connectivity-checks)
+- [DNS & Name Resolution](#-3️⃣-dns--name-resolution)
+- [Routing & Gateway](#-4️⃣-routing--gateway)
+- [Port, Socket & Connections](#-5️⃣-port-socket-and-connection-checks)
+- [Firewalls & Packet Filtering](#-6️⃣-firewalls--packet-filtering)
+- [Interface Configuration & Monitoring](#-7️⃣-interface-configuration--monitoring)
+- [Real-Time Troubleshooting](#-8️⃣-real-time-troubleshooting-examples)
+- [Common Network Issues](#-common-network-issues--solutions)
+- [Interview Quick Tips](#-interview-quick-tips)
+- [Quick Reference Card](#-quick-reference-card)
+
+---
+
+## 🔌 1️⃣ Interface & IP Information
+
+### `ip addr show` (or `ip a`)
+
+Shows all network interfaces and their IP addresses.
+
+```bash
+ip addr show
+# or shorthand
+ip a
+```
+
+**Output includes:**
+- Interface names (eth0, ens33, wlan0)
+- IP addresses (IPv4 and IPv6)
+- MAC addresses
+- Network state (UP/DOWN)
+- MTU (Maximum Transmission Unit)
+
+**Example output:**
+```
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500
+    inet 192.168.1.100/24 brd 192.168.1.255 scope global eth0
+    inet6 fe80::a00:27ff:fe4e:66a1/64 scope link
+```
+
+### Use Cases
+
+✅ **Check if your EC2 or data center server got the correct private/public IP**  
+✅ **Verify DHCP/static IP assignments**  
+✅ **Troubleshoot network connectivity issues**
+
+```bash
+# Show specific interface
+ip addr show eth0
+
+# Show only IPv4 addresses
+ip -4 addr show
+
+# Show only IPv6 addresses
+ip -6 addr show
+
+# Brief output
+ip -br addr show
+```
+
+---
+
+### `ip link show`
+
+Displays all interfaces and their states (UP/DOWN).
+
+```bash
+ip link show
+```
+
+**Use case:** Check if NIC (Network Interface Card) is active.
+
+```bash
+# Show specific interface
+ip link show eth0
+
+# Bring interface up
+sudo ip link set eth0 up
+
+# Bring interface down
+sudo ip link set eth0 down
+
+# Show statistics
+ip -s link show eth0
+```
+
+---
+
+### `ifconfig` (legacy, replaced by `ip`)
+
+**Note:** `ifconfig` is deprecated but still commonly found in legacy systems.
+
+```bash
+# Show all interfaces
+ifconfig
+
+# Show specific interface
+ifconfig eth0
+
+# Enable interface
+sudo ifconfig eth0 up
+
+# Disable interface
+sudo ifconfig eth0 down
+
+# Assign IP address
+sudo ifconfig eth0 192.168.1.100 netmask 255.255.255.0
+```
+
+**Use case:** Temporarily enable/disable an interface.
+
+### Modern vs Legacy Commands
+
+| Legacy | Modern | Purpose |
+|--------|--------|---------|
+| `ifconfig` | `ip addr` | Show IP addresses |
+| `ifconfig eth0 up` | `ip link set eth0 up` | Enable interface |
+| `route` | `ip route` | Show routing table |
+| `netstat` | `ss` | Show sockets/connections |
+| `arp` | `ip neigh` | Show ARP table |
+
+---
+
+## 🌍 2️⃣ Connectivity Checks
+
+### `ping`
+
+Test basic network connectivity and measure latency.
+
+```bash
+# Ping a domain
+ping google.com
+
+# Ping specific number of times
+ping -c 4 8.8.8.8
+
+# Continuous ping (Ctrl+C to stop)
+ping 192.168.1.1
+
+# Ping with interval (seconds)
+ping -i 2 google.com
+
+# Flood ping (requires root, for testing)
+sudo ping -f 192.168.1.1
+
+# Set packet size
+ping -s 1024 google.com
+```
+
+### Use Cases
+
+✅ **Check basic network connectivity**  
+✅ **Test latency between servers** (e.g., between data centers)  
+✅ **Verify if host is reachable**  
+✅ **Diagnose packet loss**
+
+### Common Issue
+
+**If DNS fails:**
+- `ping google.com` fails ❌
+- But `ping 8.8.8.8` works ✅
+- **Conclusion:** DNS issue, not network issue
+
+```bash
+# Test DNS vs direct IP
+ping -c 2 google.com     # Tests DNS + connectivity
+ping -c 2 8.8.8.8        # Tests only connectivity
+```
+
+---
+
+### `traceroute`
+
+Shows the path packets take to a destination.
+
+```bash
+sudo traceroute google.com
+
+# Don't resolve hostnames (faster)
+sudo traceroute -n 8.8.8.8
+
+# Use ICMP instead of UDP
+sudo traceroute -I google.com
+
+# Set max hops
+sudo traceroute -m 15 google.com
+```
+
+**Output shows:**
+- Each hop (router) along the path
+- Response time for each hop
+- Hostname/IP of each hop
+
+**Use case:** Identify where packets drop between data centers or cloud regions.
+
+```bash
+# Example output
+1  192.168.1.1 (192.168.1.1)  1.234 ms
+2  10.0.0.1 (10.0.0.1)  5.678 ms
+3  * * *  (timeout - possible firewall)
+4  8.8.8.8 (8.8.8.8)  15.234 ms
+```
+
+---
+
+### `mtr` (combines ping + traceroute)
+
+Real-time network diagnostic tool that combines ping and traceroute.
+
+```bash
+sudo mtr google.com
+
+# No DNS resolution (faster)
+sudo mtr -n 8.8.8.8
+
+# Report mode (run and exit)
+sudo mtr -r -c 10 google.com
+
+# Show both hostnames and IPs
+sudo mtr -b google.com
+```
+
+**Use case:** Continuous monitoring of latency & packet loss between hops — used by cloud ops teams.
+
+**Advantages over traceroute:**
+- Shows real-time updates
+- Displays packet loss percentage
+- Shows average, best, and worst latency
+- More accurate for diagnosing intermittent issues
+
+```bash
+# Example: Monitor connection to production server
+sudo mtr -r -c 100 prod-server.example.com > network-report.txt
+```
+
+---
+
+## 🧭 3️⃣ DNS & Name Resolution
+
+### `nslookup`
+
+Query DNS servers to resolve domain names.
+
+```bash
+# Basic lookup
+nslookup example.com
+
+# Query specific DNS server
+nslookup example.com 8.8.8.8
+
+# Reverse lookup (IP to hostname)
+nslookup 8.8.8.8
+
+# Interactive mode
+nslookup
+> server 8.8.8.8
+> example.com
+> exit
+```
+
+**Use case:** Check which IP your domain resolves to.
+
+```bash
+# Check mail server records
+nslookup -query=mx example.com
+
+# Check name servers
+nslookup -query=ns example.com
+
+# Check all records
+nslookup -query=any example.com
+```
+
+---
+
+### `dig`
+
+More detailed DNS query tool (preferred over nslookup).
+
+```bash
+# Basic query
+dig example.com
+
+# Query specific record type
+dig example.com A      # IPv4 address
+dig example.com AAAA   # IPv6 address
+dig example.com MX     # Mail servers
+dig example.com NS     # Name servers
+dig example.com TXT    # Text records
+
+# Short answer only
+dig example.com +short
+
+# Query specific DNS server
+dig @8.8.8.8 example.com
+
+# Reverse DNS lookup
+dig -x 8.8.8.8
+
+# Trace DNS resolution path
+dig example.com +trace
+
+# No comments (cleaner output)
+dig example.com +nocomments
+
+# Show only answer section
+dig example.com +noall +answer
+```
+
+### Use Cases
+
+✅ **Detailed DNS query tracing** (authoritative servers, TTL, etc.)  
+✅ **Debug DNS propagation issues**  
+✅ **Verify DNS records after changes**  
+✅ **Check DNS cache and TTL values**
+
+**Interview Tip:** `dig +trace` helps you troubleshoot DNS propagation by showing the complete resolution path from root servers.
+
+```bash
+# Example: Trace how DNS resolves
+dig example.com +trace
+
+# Output shows:
+# . (root servers)
+# .com (TLD servers)
+# example.com (authoritative servers)
+# Final answer
+```
+
+---
+
+### `/etc/resolv.conf`
+
+DNS resolver configuration file.
+
+```bash
+# View DNS servers
+cat /etc/resolv.conf
+
+# Example content:
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+search example.com
+```
+
+**Use case:** Check which DNS servers your system uses.
+
+---
+
+### `/etc/hosts`
+
+Local hostname to IP mapping (checked before DNS).
+
+```bash
+# View hosts file
+cat /etc/hosts
+
+# Example content:
+127.0.0.1   localhost
+192.168.1.10   myserver.local
+10.0.0.5   database-server
+```
+
+**Use case:**
+- Override DNS for testing
+- Define local network hosts
+- Block websites (map to 127.0.0.1)
+
+---
+
+## ⚙️ 4️⃣ Routing & Gateway
+
+### `ip route show`
+
+Shows current routing table.
+
+```bash
+ip route show
+# or shorthand
+ip r
+```
+
+**Output includes:**
+- Default gateway
+- Network routes
+- Interface assignments
+
+```bash
+# Example output:
+default via 192.168.1.1 dev eth0 
+192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.100
+```
+
+### Use Cases
+
+✅ **Check default gateway**  
+✅ **Verify route to specific subnets**  
+✅ **Troubleshoot routing issues in multi-NIC servers**
+
+```bash
+# Add route
+sudo ip route add 10.0.0.0/24 via 192.168.1.1
+
+# Delete route
+sudo ip route del 10.0.0.0/24
+
+# Change default gateway
+sudo ip route add default via 192.168.1.1
+
+# Show routes for specific destination
+ip route show 10.0.0.0/24
+```
+
+---
+
+### `ip route get`
+
+Find which interface or route is used to reach a destination.
+
+```bash
+# Check route to Google DNS
+ip route get 8.8.8.8
+
+# Check route to specific server
+ip route get 192.168.1.50
+```
+
+**Example output:**
+```
+8.8.8.8 via 192.168.1.1 dev eth0 src 192.168.1.100 uid 1000
+```
+
+**Use case:** Find which interface or route is used to reach a destination.
+
+---
+
+### `route -n` (legacy)
+
+Lists routing table in numeric form (no DNS lookup).
+
+```bash
+# Show routing table
+route -n
+
+# Add route
+sudo route add -net 10.0.0.0/24 gw 192.168.1.1
+
+# Delete route
+sudo route del -net 10.0.0.0/24
+
+# Add default gateway
+sudo route add default gw 192.168.1.1
+```
+
+---
+
+## 🧱 5️⃣ Port, Socket, and Connection Checks
+
+### `ss` (socket statistics)
+
+Modern replacement for `netstat` — faster and more efficient.
+
+```bash
+# Show all TCP and UDP listening ports
+ss -tuln
+
+# Show all connections
+ss -a
+
+# Show TCP connections
+ss -t
+
+# Show UDP connections
+ss -u
+
+# Show listening sockets
+ss -l
+
+# Show processes
+ss -p
+
+# Show summary
+ss -s
+```
+
+### Common Options Breakdown
+
+| Option | Meaning |
+|--------|---------|
+| `-t` | TCP sockets |
+| `-u` | UDP sockets |
+| `-l` | Listening sockets |
+| `-n` | Numeric (don't resolve names) |
+| `-p` | Show process |
+| `-a` | All sockets |
+
+### Use Cases
+
+✅ **See listening ports**  
+✅ **Identify active TCP/UDP connections**  
+✅ **Check if service like Nginx (port 80) is running**
+
+```bash
+# Check if port 80 is listening
+ss -tuln | grep :80
+
+# Show established connections
+ss -t state established
+
+# Show all listening ports with process
+sudo ss -tulnp
+
+# Filter by port
+ss -tuln sport = :22
+
+# Show connections to specific IP
+ss dst 192.168.1.100
+```
+
+### Example: Verify Nginx is Running
+
+```bash
+ss -tuln | grep 80
+
+# Output:
+tcp   LISTEN 0   128   0.0.0.0:80   0.0.0.0:*
+```
+
+---
+
+### `netstat` (old but common)
+
+Legacy tool for network statistics.
+
+```bash
+# Show all listening ports with processes
+netstat -tulnp
+
+# Show all connections
+netstat -a
+
+# Show routing table
+netstat -r
+
+# Show interface statistics
+netstat -i
+
+# Show multicast memberships
+netstat -g
+
+# Continuous monitoring
+netstat -c
+```
+
+**Use case:** Show active connections and which process is using each port.
+
+```bash
+# Common usage for troubleshooting
+sudo netstat -tulnp | grep :443
+
+# Example output:
+tcp  0  0  0.0.0.0:443  0.0.0.0:*  LISTEN  1234/nginx
+```
+
+---
+
+### `lsof -i`
+
+List open files — network connections edition.
+
+```bash
+# Show all network connections
+sudo lsof -i
+
+# Check specific port
+sudo lsof -i :80
+sudo lsof -i :443
+
+# Check specific protocol
+sudo lsof -i tcp
+sudo lsof -i udp
+
+# Check specific IP
+sudo lsof -i @192.168.1.100
+
+# Check port range
+sudo lsof -i :1-1024
+
+# Check by user
+lsof -i -u username
+```
+
+**Use case:** Find which process is using a specific port (great for Nginx, Apache, etc.)
+
+### Example: Port Already in Use
+
+```bash
+# Problem: Can't start Nginx
+sudo systemctl start nginx
+# Error: Address already in use
+
+# Solution: Find what's using port 80
+sudo lsof -i :80
+
+# Output:
+COMMAND  PID     USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+apache2  1234    root   4u   IPv4  12345      0t0  TCP *:http (LISTEN)
+
+# Kill the process
+sudo kill 1234
+```
+
+---
+
+## 🧱 6️⃣ Firewalls & Packet Filtering
+
+### `ufw` (Uncomplicated Firewall)
+
+Ubuntu/Debian-based systems — user-friendly firewall management.
+
+```bash
+# Check status
+sudo ufw status
+sudo ufw status verbose
+
+# Enable firewall
+sudo ufw enable
+
+# Disable firewall
+sudo ufw disable
+
+# Allow port
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
+# Deny port
+sudo ufw deny 80/tcp
+
+# Allow from specific IP
+sudo ufw allow from 192.168.1.100
+
+# Allow from subnet
+sudo ufw allow from 192.168.1.0/24
+
+# Allow specific IP to specific port
+sudo ufw allow from 192.168.1.100 to any port 22
+
+# Delete rule
+sudo ufw delete allow 80/tcp
+
+# Reset to defaults
+sudo ufw reset
+
+# Allow SSH before enabling
+sudo ufw allow 22/tcp
+sudo ufw enable
+```
+
+### Use Cases
+
+✅ **Open or block ports for SSH, HTTP, etc.**  
+✅ **Quick firewall setup for servers**  
+✅ **Restrict access by IP address**
+
+### Common UFW Rules
+
+```bash
+# Basic web server
+sudo ufw allow 22/tcp    # SSH
+sudo ufw allow 80/tcp    # HTTP
+sudo ufw allow 443/tcp   # HTTPS
+
+# Database server (restricted)
+sudo ufw allow from 192.168.1.0/24 to any port 3306
+
+# Deny outgoing (default deny)
+sudo ufw default deny outgoing
+sudo ufw default allow outgoing
+```
+
+---
+
+### `iptables`
+
+Low-level packet filtering control — powerful but complex.
+
+```bash
+# List all rules
+sudo iptables -L -n -v
+
+# List rules with line numbers
+sudo iptables -L --line-numbers
+
+# Allow incoming SSH
+sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+
+# Allow incoming HTTP/HTTPS
+sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+
+# Allow established connections
+sudo iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Drop all other incoming
+sudo iptables -P INPUT DROP
+
+# Allow from specific IP
+sudo iptables -A INPUT -s 192.168.1.100 -j ACCEPT
+
+# Block specific IP
+sudo iptables -A INPUT -s 10.0.0.50 -j DROP
+
+# Delete rule by number
+sudo iptables -D INPUT 5
+
+# Save rules (Ubuntu/Debian)
+sudo iptables-save > /etc/iptables/rules.v4
+
+# Restore rules
+sudo iptables-restore < /etc/iptables/rules.v4
+
+# Flush all rules (careful!)
+sudo iptables -F
+```
+
+### iptables Chains
+
+| Chain | Purpose |
+|-------|---------|
+| **INPUT** | Incoming packets to the server |
+| **OUTPUT** | Outgoing packets from the server |
+| **FORWARD** | Packets being routed through the server |
+
+### Common Targets
+
+| Target | Action |
+|--------|--------|
+| **ACCEPT** | Allow the packet |
+| **DROP** | Silently discard |
+| **REJECT** | Discard and send error |
+| **LOG** | Log the packet |
+
+**Use case:** Used heavily in data centers and cloud firewalls for security.
+
+### Example: Basic Firewall Setup
+
+```bash
+#!/bin/bash
+# Flush existing rules
+sudo iptables -F
+
+# Default policies
+sudo iptables -P INPUT DROP
+sudo iptables -P FORWARD DROP
+sudo iptables -P OUTPUT ACCEPT
+
+# Allow loopback
+sudo iptables -A INPUT -i lo -j ACCEPT
+
+# Allow established connections
+sudo iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Allow SSH (from specific IP)
+sudo iptables -A INPUT -p tcp -s 192.168.1.0/24 --dport 22 -j ACCEPT
+
+# Allow HTTP/HTTPS
+sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+
+# Save rules
+sudo iptables-save > /etc/iptables/rules.v4
+```
+
+---
+
+## ☁️ 7️⃣ Interface Configuration & Monitoring
+
+### `ethtool`
+
+Check and configure network interface settings.
+
+```bash
+# Show interface details
+sudo ethtool eth0
+
+# Show statistics
+sudo ethtool -S eth0
+
+# Show driver information
+sudo ethtool -i eth0
+
+# Set speed and duplex
+sudo ethtool -s eth0 speed 1000 duplex full
+
+# Enable/disable autonegotiation
+sudo ethtool -s eth0 autoneg on
+```
+
+**Use case:** Check NIC speed, duplex, and link status (real hardware issue check).
+
+**What to look for:**
+- **Speed:** 1000Mb/s, 100Mb/s, 10Mb/s
+- **Duplex:** Full, Half
+- **Link detected:** yes/no
+
+```bash
+# Example output:
+Settings for eth0:
+    Speed: 1000Mb/s
+    Duplex: Full
+    Link detected: yes
+```
+
+---
+
+### `nmcli` (Network Manager CLI)
+
+Network Manager CLI — common in cloud VMs and modern Linux distributions.
+
+```bash
+# Show device status
+nmcli dev status
+
+# Show connections
+nmcli con show
+
+# Show connection details
+nmcli con show "Wired connection 1"
+
+# Activate connection
+nmcli con up "Wired connection 1"
+
+# Deactivate connection
+nmcli con down "Wired connection 1"
+
+# Add static IP
+nmcli con mod "Wired connection 1" ipv4.addresses 192.168.1.100/24
+nmcli con mod "Wired connection 1" ipv4.gateway 192.168.1.1
+nmcli con mod "Wired connection 1" ipv4.dns "8.8.8.8 8.8.4.4"
+nmcli con mod "Wired connection 1" ipv4.method manual
+
+# Switch to DHCP
+nmcli con mod "Wired connection 1" ipv4.method auto
+
+# Reload connection
+nmcli con reload
+```
+
+**Use case:** Inspect and modify network connections in managed environments.
+
+---
+
+### `tcpdump`
+
+Powerful packet capture tool for deep network analysis.
+
+```bash
+# Capture on interface
+sudo tcpdump -i eth0
+
+# Capture specific port
+sudo tcpdump -i eth0 port 80
+
+# Capture from specific host
+sudo tcpdump -i eth0 host 192.168.1.100
+
+# Capture and save to file
+sudo tcpdump -i eth0 -w capture.pcap
+
+# Read from file
+sudo tcpdump -r capture.pcap
+
+# Show in ASCII
+sudo tcpdump -i eth0 -A port 80
+
+# Show in hex and ASCII
+sudo tcpdump -i eth0 -X port 80
+
+# Capture specific number of packets
+sudo tcpdump -i eth0 -c 100
+
+# Don't resolve hostnames (faster)
+sudo tcpdump -i eth0 -n
+
+# Verbose output
+sudo tcpdump -i eth0 -v
+```
+
+### Advanced Filters
+
+```bash
+# Capture TCP traffic only
+sudo tcpdump -i eth0 tcp
+
+# Capture UDP traffic only
+sudo tcpdump -i eth0 udp
+
+# Capture traffic to/from specific network
+sudo tcpdump -i eth0 net 192.168.1.0/24
+
+# Capture SYN packets
+sudo tcpdump -i eth0 'tcp[tcpflags] & (tcp-syn) != 0'
+
+# Capture HTTP GET requests
+sudo tcpdump -i eth0 -s 0 -A 'tcp port 80 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)'
+
+# Capture traffic between two hosts
+sudo tcpdump -i eth0 host 192.168.1.100 and host 192.168.1.200
+```
+
+### Use Cases
+
+✅ **Capture HTTP traffic**  
+✅ **Debug slow or failed connections**  
+✅ **Common for network latency issues in data centers**  
+✅ **Security analysis and intrusion detection**
+
+### Example: Debug Web Server Issues
+
+```bash
+# Capture HTTP traffic
+sudo tcpdump -i eth0 -A -s 0 'tcp port 80 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)'
+
+# Capture to file for Wireshark analysis
+sudo tcpdump -i eth0 port 80 -w http_traffic.pcap
+
+# Then analyze with Wireshark:
+wireshark http_traffic.pcap
+```
+
+---
+
+## 🧩 8️⃣ Real-Time Troubleshooting Examples
+
+### Common Scenarios & Solutions
+
+| Scenario | Commands | Purpose |
+|----------|----------|---------|
+| **Web app not loading** | `ping`, `ss -tuln`, `systemctl status nginx` | Check network + service ports |
+| **DNS not resolving** | `nslookup`, `dig`, `cat /etc/resolv.conf` | Verify DNS configuration |
+| **High latency to another region** | `mtr region-server`, `traceroute` | Trace hops and latency |
+| **Port conflict** | `lsof -i :8080`, `ss -tuln \| grep 8080` | Identify which process is using the port |
+| **Firewall blocking service** | `sudo iptables -L`, `ufw status` | See if rules block the port |
+| **Private IP unreachable** | `ip route show`, `ip route get IP` | Check route table configuration |
+| **Interface down** | `ip link show`, `sudo ip link set eth0 up` | Check and enable interface |
+| **Slow network performance** | `ethtool eth0`, `mtr`, `tcpdump` | Check NIC settings and packet loss |
+| **Can't reach gateway** | `ping $(ip route \| grep default \| awk '{print $3}')` | Test gateway connectivity |
+| **SSH connection refused** | `ss -tuln \| grep :22`, `sudo ufw status` | Check if SSH is listening and allowed |
+
+---
+
+### Troubleshooting Workflow
+
+#### Problem: Website Not Loading
+
+```bash
+# Step 1: Check if you have network connectivity
+ping -c 4 8.8.8.8
+# ✅ Works? Network is up
+# ❌ Fails? Check interface and routing
+
+# Step 2: Check DNS
+ping -c 4 google.com
+# ✅ Works? DNS is fine
+# ❌ Fails? DNS issue - check /etc/resolv.conf
+
+# Step 3: Check if web server is listening
+ss -tuln | grep :80
+# ✅ Shows LISTEN? Server is running
+# ❌ Nothing? Start the service
+
+# Step 4: Check firewall
+sudo ufw status
+sudo iptables -L -n | grep 80
+# ✅ Port 80 allowed? Good
+# ❌ Blocked? Add firewall rule
+
+# Step 5: Check service status
+sudo systemctl status nginx
+# or
+sudo systemctl status apache2
+```
+
+---
+
+#### Problem: SSH Connection Timeout
+
+```bash
+# Step 1: Verify server is reachable
+ping server-ip
+
+# Step 2: Check if SSH port is open
+nmap -p 22 server-ip
+# or
+telnet server-ip 22
+
+# Step 3: Check SSH service on server
+sudo systemctl status sshd
+
+# Step 4: Verify SSH is listening
+ss -tuln | grep :22
+
+# Step 5: Check firewall rules
+sudo ufw status | grep 22
+sudo iptables -L -n | grep 22
+
+# Step 6: Check SSH config
+sudo cat /etc/ssh/sshd_config | grep Port
+```
+
+---
+
+#### Problem: High Latency
+
+```bash
+# Step 1: Continuous monitoring
+sudo mtr -r -c 100 destination-server
+
+# Step 2: Check interface errors
+ip -s link show eth0
+
+# Step 3: Check NIC settings
+sudo ethtool eth0
+
+# Step 4: Capture packets for analysis
+sudo tcpdump -i eth0 -w latency-test.pcap
+
+# Step 5: Check routing
+ip route get destination-ip
+traceroute destination-ip
+```
+
+---
+
+#### Problem: Port Already in Use
+
+```bash
+# Identify process using the port
+sudo lsof -i :8080
+
+# Or with ss
+sudo ss -tulnp | grep :8080
+
+# Or with netstat
+sudo netstat -tulnp | grep :8080
+
+# Kill the process
+sudo kill <PID>
+
+# Or kill by name
+sudo pkill nginx
+
+# Or stop service properly
+sudo systemctl stop nginx
+```
+
+---
+
+## 🚨 Common Network Issues & Solutions
+
+### Issue 1: DNS Resolution Failure
+
+**Symptoms:**
+- `ping google.com` fails
+- `ping 8.8.8.8` works
+
+**Diagnosis:**
+```bash
+# Check DNS servers
+cat /etc/resolv.conf
+
+# Test DNS manually
+nslookup google.com
+dig google.com
+```
+
+**Solutions:**
+```bash
+# Temporary: Use Google DNS
+echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
+
+# Permanent (Ubuntu/Debian with systemd-resolved)
+sudo systemctl restart systemd-resolved
+
+# Or edit netplan (Ubuntu 18.04+)
+sudo nano /etc/netplan/01-netcfg.yaml
+# Add:
+#   nameservers:
+#     addresses: [8.8.8.8, 8.8.4.4]
+sudo netplan apply
+```
+
+---
+
+### Issue 2: No Default Gateway
+
+**Symptoms:**
+- Can't reach internet
+- Can only reach local network
+
+**Diagnosis:**
+```bash
+ip route show
+# Should show: default via X.X.X.X dev ethX
+```
+
+**Solutions:**
+```bash
+# Add default gateway temporarily
+sudo ip route add default via 192.168.1.1
+
+# Make permanent (netplan)
+sudo nano /etc/netplan/01-netcfg.yaml
+# Add gateway4: 192.168.1.1
+sudo netplan apply
+```
+
+---
+
+### Issue 3: Interface Down
+
+**Symptoms:**
+- No network connectivity
+- `ip link show` shows state DOWN
+
+**Diagnosis:**
+```bash
+ip link show eth0
+```
+
+**Solutions:**
+```bash
+# Bring interface up
+sudo ip link set eth0 up
+
+# If using NetworkManager
+nmcli con up "Wired connection 1"
+
+# Check for hardware issues
+sudo ethtool eth0 | grep "Link detected"
+```
+
+---
+
+### Issue 4: Firewall Blocking Traffic
+
+**Symptoms:**
+- Service running but can't connect
+- Works locally but not remotely
+
+**Diagnosis:**
+```bash
+# Check ufw
+sudo ufw status
+
+# Check iptables
+sudo iptables -L -n -v | grep <port>
+```
+
+**Solutions:**
+```bash
+# UFW
+sudo ufw allow 80/tcp
+
+# iptables
+sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables-save > /etc/iptables/rules.v4
+```
+
+---
+
+### Issue 5: Duplicate IP Address
+
+**Symptoms:**
+- Intermittent connectivity
+- ARP conflicts
+
+**Diagnosis:**
+```bash
+# Check current IP
+ip addr show
+
+# Ping your own IP from another machine
+# If reply, there's a duplicate
+
+# Check ARP table
+ip neigh show
+```
+
+**Solutions:**
+```bash
+# Change IP address temporarily
+sudo ip addr flush dev eth0
+sudo ip addr add 192.168.1.101/24 dev eth0
+
+# Or use DHCP to get different IP
+sudo dhclient -r
+sudo dhclient eth0
+```
+
+---
+
+## 🧠 Interview Quick Tips
+
+### One-Line Summary
+
+> "Linux networking commands help diagnose connectivity, DNS, routing, and port-level issues in servers or data centers."
+
+### Key Tools by Category
+
+| Category | Tools |
+|----------|-------|
+| **Interfaces & IPs** | `ip addr`, `ip link`, `ifconfig` |
+| **Connectivity** | `ping`, `traceroute`, `mtr` |
+| **DNS** | `dig`, `nslookup`, `/etc/resolv.conf` |
+| **Routing** | `ip route`, `ip route get`, `traceroute` |
+| **Ports & Sockets** | `ss`, `netstat`, `lsof -i` |
+| **Firewalls** | `ufw`, `iptables` |
+| **Monitoring** | `tcpdump`, `ethtool`, `mtr` |
+
+---
+
+### Top 10 Must-Know Commands
+
+1. **`ip addr show`** — Check interface IPs and status
+2. **`ping`** — Test basic connectivity
+3. **`ss -tuln`** — Show listening ports
+4. **`dig`** — DNS troubleshooting
+5. **`ip route show`** — View routing table
+6. **`tcpdump`** — Capture packets for analysis
+7. **`sudo ufw status`** — Check firewall rules
+8. **`lsof -i :PORT`** — Find process using a port
+9. **`traceroute`** — Trace packet path
+10. **`mtr`** — Real-time latency monitoring
+
+---
+
+### Common Interview Questions & Answers
+
+#### Q1: How do you check if a service is listening on a specific port?
+
+**Answer:**
+```bash
+# Method 1: Using ss (modern)
+ss -tuln | grep :80
+
+# Method 2: Using netstat (legacy)
+sudo netstat -tulnp | grep :80
+
+# Method 3: Using lsof
+sudo lsof -i :80
+
+# Method 4: Using telnet/nc
+telnet localhost 80
+nc -zv localhost 80
+```
+
+---
+
+#### Q2: A server can't reach the internet. How do you troubleshoot?
+
+**Answer:**
+```bash
+# Step 1: Check if interface is up
+ip link show
+
+# Step 2: Check if IP is assigned
+ip addr show
+
+# Step 3: Check default gateway
+ip route show | grep default
+
+# Step 4: Test gateway connectivity
+ping <gateway-ip>
+
+# Step 5: Test external connectivity
+ping 8.8.8.8
+
+# Step 6: Test DNS
+ping google.com
+
+# Step 7: Check DNS configuration
+cat /etc/resolv.conf
+```
+
+---
+
+#### Q3: How do you find which process is using port 8080?
+
+**Answer:**
+```bash
+# Method 1: Using lsof (most detailed)
+sudo lsof -i :8080
+
+# Method 2: Using ss
+sudo ss -tulnp | grep :8080
+
+# Method 3: Using netstat
+sudo netstat -tulnp | grep :8080
+
+# Method 4: Using fuser
+sudo fuser 8080/tcp
+```
+
+---
+
+#### Q4: Explain the difference between `ping` and `traceroute`
+
+**Answer:**
+- **`ping`**: Tests if a host is reachable and measures round-trip time (RTT). It only shows the final destination's response.
+- **`traceroute`**: Shows the complete path (all hops/routers) packets take to reach the destination, along with latency at each hop. Useful for identifying where packets are dropped or delayed.
+
+---
+
+#### Q5: How do you temporarily add a static route?
+
+**Answer:**
+```bash
+# Add route to specific network via gateway
+sudo ip route add 10.0.0.0/24 via 192.168.1.1
+
+# Add default gateway
+sudo ip route add default via 192.168.1.1
+
+# Delete route
+sudo ip route del 10.0.0.0/24
+
+# View routes
+ip route show
+```
+
+---
+
+#### Q6: What's the difference between `ss` and `netstat`?
+
+**Answer:**
+- **`ss`** (socket statistics): Modern, faster, more efficient. Gets information directly from kernel space.
+- **`netstat`**: Legacy tool, slower, part of net-tools package which is deprecated.
+
+**Recommendation:** Always use `ss` in modern Linux systems.
+
+```bash
+# Both commands do similar things
+ss -tuln        # Modern
+netstat -tuln   # Legacy
+```
+
+---
+
+#### Q7: How do you capture HTTP traffic for analysis?
+
+**Answer:**
+```bash
+# Capture on specific interface and port
+sudo tcpdump -i eth0 port 80 -w capture.pcap
+
+# Capture with ASCII output (see content)
+sudo tcpdump -i eth0 -A port 80
+
+# Capture from specific host
+sudo tcpdump -i eth0 host 192.168.1.100 and port 80
+
+# Later analyze with Wireshark
+wireshark capture.pcap
+```
+
+---
+
+#### Q8: How do you check DNS resolution issues?
+
+**Answer:**
+```bash
+# Test basic resolution
+nslookup example.com
+
+# Detailed DNS query
+dig example.com
+
+# Trace DNS resolution path
+dig example.com +trace
+
+# Check system DNS configuration
+cat /etc/resolv.conf
+
+# Check local hosts file
+cat /etc/hosts
+
+# Test against specific DNS server
+dig @8.8.8.8 example.com
+```
+
+---
+
+#### Q9: How do you open port 443 in the firewall?
+
+**Answer:**
+```bash
+# Using UFW (Ubuntu/Debian)
+sudo ufw allow 443/tcp
+sudo ufw status
+
+# Using iptables
+sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+sudo iptables-save > /etc/iptables/rules.v4
+
+# Using firewalld (RHEL/CentOS)
+sudo firewall-cmd --permanent --add-port=443/tcp
+sudo firewall-cmd --reload
+```
+
+---
+
+#### Q10: What does MTU mean and how do you check it?
+
+**Answer:**
+**MTU (Maximum Transmission Unit)**: The largest packet size (in bytes) that can be transmitted over a network interface.
+
+- **Standard Ethernet**: 1500 bytes
+- **Jumbo frames**: 9000 bytes
+
+```bash
+# Check MTU
+ip addr show eth0 | grep mtu
+
+# Or
+ip link show eth0
+
+# Change MTU temporarily
+sudo ip link set dev eth0 mtu 9000
+
+# Test with ping (don't fragment)
+ping -M do -s 1472 google.com
+```
+
+---
+
+### Key Networking Concepts
+
+#### OSI Model - Quick Reference
+
+| Layer | Name | Protocols/Tools | Troubleshooting |
+|-------|------|-----------------|-----------------|
+| 7 | Application | HTTP, FTP, SSH | `curl`, `wget`, application logs |
+| 6 | Presentation | SSL/TLS | Certificate errors |
+| 5 | Session | NetBIOS | Session management |
+| 4 | Transport | TCP, UDP | `ss`, `netstat`, port checks |
+| 3 | Network | IP, ICMP | `ping`, `traceroute`, routing |
+| 2 | Data Link | Ethernet, ARP | `ip link`, `ethtool` |
+| 1 | Physical | Cables, NICs | Cable check, link lights |
+
+---
+
+#### TCP vs UDP
+
+| Feature | TCP | UDP |
+|---------|-----|-----|
+| **Connection** | Connection-oriented | Connectionless |
+| **Reliability** | Reliable, ordered | Unreliable, no ordering |
+| **Speed** | Slower | Faster |
+| **Use cases** | HTTP, SSH, FTP | DNS, Streaming, Gaming |
+| **Check command** | `ss -t` | `ss -u` |
+
+---
+
+#### Common Ports Reference
+
+| Port | Service | Protocol | Check Command |
+|------|---------|----------|---------------|
+| 20/21 | FTP | TCP | `ss -tuln \| grep :21` |
+| 22 | SSH | TCP | `ss -tuln \| grep :22` |
+| 23 | Telnet | TCP | `ss -tuln \| grep :23` |
+| 25 | SMTP | TCP | `ss -tuln \| grep :25` |
+| 53 | DNS | TCP/UDP | `ss -tuln \| grep :53` |
+| 80 | HTTP | TCP | `ss -tuln \| grep :80` |
+| 443 | HTTPS | TCP | `ss -tuln \| grep :443` |
+| 3306 | MySQL | TCP | `ss -tuln \| grep :3306` |
+| 5432 | PostgreSQL | TCP | `ss -tuln \| grep :5432` |
+| 6379 | Redis | TCP | `ss -tuln \| grep :6379` |
+| 27017 | MongoDB | TCP | `ss -tuln \| grep :27017` |
+
+---
+
+### Advanced Topics
+
+#### Network Namespaces
+
+Isolate network stack for containers and VMs.
+
+```bash
+# List network namespaces
+ip netns list
+
+# Create namespace
+sudo ip netns add test-ns
+
+# Execute command in namespace
+sudo ip netns exec test-ns ip addr show
+
+# Delete namespace
+sudo ip netns delete test-ns
+```
+
+---
+
+#### VLAN Configuration
+
+Virtual LANs for network segmentation.
+
+```bash
+# Create VLAN interface
+sudo ip link add link eth0 name eth0.100 type vlan id 100
+
+# Assign IP to VLAN
+sudo ip addr add 192.168.100.1/24 dev eth0.100
+
+# Enable VLAN interface
+sudo ip link set dev eth0.100 up
+
+# Show VLAN interfaces
+ip -d link show type vlan
+```
+
+---
+
+#### Bridge Configuration
+
+Bridge interfaces for virtual machines and containers.
+
+```bash
+# Create bridge
+sudo ip link add br0 type bridge
+
+# Add interface to bridge
+sudo ip link set eth0 master br0
+
+# Enable bridge
+sudo ip link set br0 up
+
+# Show bridge details
+bridge link show
+```
+
+---
+
+#### Bonding (NIC Teaming)
+
+Combine multiple NICs for redundancy or increased throughput.
+
+```bash
+# Create bond interface
+sudo ip link add bond0 type bond mode 802.3ad
+
+# Add slaves to bond
+sudo ip link set eth0 master bond0
+sudo ip link set eth1 master bond0
+
+# Enable bond
+sudo ip link set bond0 up
+
+# Check bond status
+cat /proc/net/bonding/bond0
+```
+
+---
+
+## 📋 Quick Reference Card
+
+### Essential One-Liners
+
+```bash
+# Quick system network check
+ip -br addr show && ip route show && cat /etc/resolv.conf
+
+# Find your public IP
+curl ifconfig.me
+dig +short myip.opendns.com @resolver1.opendns.com
+
+# Test if port is open (without telnet/nc)
+timeout 1 bash -c "</dev/tcp/google.com/80" && echo "Port open" || echo "Port closed"
+
+# Show all listening services
+sudo ss -tulnp | grep LISTEN
+
+# Show top 10 connections
+ss -tn | tail -n +2 | awk '{print $4}' | cut -d: -f1 | sort | uniq -c | sort -rn | head -10
+
+# Check bandwidth usage by connection
+sudo iftop -i eth0
+
+# Monitor new connections in real-time
+watch -n 1 'ss -tn | grep ESTAB | wc -l'
+
+# Show routing table in human-readable format
+ip route show | column -t
+
+# Check all network interfaces status
+for iface in $(ls /sys/class/net/); do echo "$iface: $(cat /sys/class/net/$iface/operstate)"; done
+
+# Find MAC address
+ip link show eth0 | grep ether | awk '{print $2}'
+
+# Show DNS cache (systemd-resolved)
+sudo systemd-resolve --statistics
+
+# Clear DNS cache
+sudo systemd-resolve --flush-caches
+
+# Test download speed
+wget -O /dev/null http://speedtest.tele2.net/100MB.zip
+
+# Show network statistics
+ip -s link show eth0
+
+# Monitor packet drops
+watch -n 1 'ip -s link show eth0 | grep -A 1 RX'
+```
+
+---
+
+### Troubleshooting Cheat Sheet
+
+```bash
+# Full network diagnostic script
+#!/bin/bash
+echo "=== Interface Status ==="
+ip -br addr show
+
+echo -e "\n=== Routing Table ==="
+ip route show
+
+echo -e "\n=== DNS Configuration ==="
+cat /etc/resolv.conf
+
+echo -e "\n=== Gateway Test ==="
+ping -c 2 $(ip route | grep default | awk '{print $3}')
+
+echo -e "\n=== External Connectivity ==="
+ping -c 2 8.8.8.8
+
+echo -e "\n=== DNS Resolution ==="
+ping -c 2 google.com
+
+echo -e "\n=== Listening Ports ==="
+ss -tuln
+
+echo -e "\n=== Firewall Status ==="
+sudo ufw status
+
+echo -e "\n=== Active Connections ==="
+ss -tn | grep ESTAB | wc -l
+```
+
+---
+
+### Performance Monitoring
+
+```bash
+# Monitor bandwidth in real-time
+sudo iftop -i eth0
+
+# Alternative: nload
+nload eth0
+
+# Show network statistics continuously
+watch -n 1 'ip -s link show eth0'
+
+# Monitor specific port traffic
+sudo tcpdump -i eth0 port 80 -c 100
+
+# Show connection states summary
+ss -s
+
+# Monitor DNS queries
+sudo tcpdump -i eth0 port 53
+```
+
+---
+
+### Security Checks
+
+```bash
+# Check for open ports from outside
+nmap -sT -p- localhost
+
+# Check for listening services
+sudo ss -tulnp
+
+# Show established connections
+ss -tn state established
+
+# Check for suspicious connections
+sudo netstat -antp | grep ESTABLISHED
+
+# Monitor failed SSH attempts
+sudo grep "Failed password" /var/log/auth.log
+
+# Check firewall rules
+sudo iptables -L -n -v
+sudo ufw status verbose
+
+# Show recent network-related logs
+sudo journalctl -u NetworkManager --since "1 hour ago"
+```
+
+---
+
+## 🎯 Best Practices
+
+### 1. Always Use Modern Tools
+
+✅ **Use:** `ip`, `ss`, `nmcli`  
+❌ **Avoid:** `ifconfig`, `netstat`, `route`
+
+### 2. Document Your Changes
+
+```bash
+# Bad
+sudo ip route add 10.0.0.0/24 via 192.168.1.1
+
+# Good
+# Adding route to dev network via main gateway
+# Date: 2024-11-04, Admin: john
+sudo ip route add 10.0.0.0/24 via 192.168.1.1
+echo "$(date): Added route to 10.0.0.0/24" >> /var/log/network-changes.log
+```
+
+### 3. Test Before Making Permanent Changes
+
+```bash
+# Test temporary change first
+sudo ip route add 10.0.0.0/24 via 192.168.1.1
+
+# If works, make permanent in netplan/network config
+```
+
+### 4. Always Check Firewall Rules
+
+Before troubleshooting connectivity, always verify firewall isn't blocking traffic.
+
+```bash
+sudo ufw status
+sudo iptables -L -n
+```
+
+### 5. Use Descriptive Firewall Rule Comments
+
+```bash
+# Good practice
+sudo ufw allow from 192.168.1.0/24 to any port 22 comment 'SSH from office network'
+```
+
+### 6. Monitor Network Changes
+
+```bash
+# Set up logging for network events
+sudo journalctl -u NetworkManager -f
+```
+
+### 7. Regular Health Checks
+
+```bash
+# Create a monitoring script
+cat << 'EOF' > /usr/local/bin/network-health.sh
+#!/bin/bash
+date >> /var/log/network-health.log
+echo "Gateway: $(ping -c 1 $(ip route | grep default | awk '{print $3}') | grep -q '1 received' && echo 'OK' || echo 'FAIL')" >> /var/log/network-health.log
+echo "DNS: $(ping -c 1 8.8.8.8 | grep -q '1 received' && echo 'OK' || echo 'FAIL')" >> /var/log/network-health.log
+EOF
+
+# Add to cron for hourly checks
+sudo chmod +x /usr/local/bin/network-health.sh
+(crontab -l 2>/dev/null; echo "0 * * * * /usr/local/bin/network-health.sh") | crontab -
+```
+
+---
+
+## 📚 Additional Resources
+
+### Official Documentation
+- [Linux IP Command Documentation](https://www.kernel.org/doc/html/latest/networking/)
+- [Ubuntu Networking Guide](https://ubuntu.com/server/docs/network-introduction)
+- [Red Hat Networking Guide](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_and_managing_networking/)
+
+### Learn More
+- [Linux Network Administrators Guide](https://tldp.org/LDP/nag2/index.html)
+- [TCP/IP Illustrated by W. Richard Stevens](https://www.amazon.com/TCP-Illustrated-Vol-Addison-Wesley-Professional/dp/0201633469)
+
+### Practice Labs
+- Set up virtual machines with different network configurations
+- Create network topologies with VirtualBox/VMware
+- Practice with Docker networks
+- Use GNS3 for complex network simulations
+
+---
+
+## 🤝 Contributing
+
+Found an error or want to add more commands? Contributions are welcome!
+
+### How to Contribute
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+---
+
+## 📜 License
+
+This guide is released under the MIT License.
+
+---
+
+## 🙏 Acknowledgments
+
+Special thanks to the Linux networking community and all the amazing system administrators who share their knowledge.
+
+---
+
+**Happy Networking! 🚀**
+
+*Last Updated: November 2024*
+
+---
+
+### Quick Command Summary Table
+
+| Task | Command | Notes |
+|------|---------|-------|
+| Show IP addresses | `ip addr show` | Modern replacement for ifconfig |
+| Show routing table | `ip route show` | View all routes |
+| Test connectivity | `ping google.com` | Basic reachability test |
+| Trace route | `traceroute google.com` | Show path to destination |
+| DNS lookup | `dig example.com` | Detailed DNS query |
+| Show listening ports | `ss -tuln` | Modern netstat replacement |
+| Find process on port | `sudo lsof -i :80` | Identify port usage |
+| Capture packets | `sudo tcpdump -i eth0` | Network analysis |
+| Check firewall | `sudo ufw status` | Ubuntu firewall status |
+| Monitor connections | `sudo mtr google.com` | Real-time network diagnostic |
+
+---
+
+**Pro Tip:** Bookmark this guide and practice these commands regularly. Hands-on experience is the best teacher! 💡
