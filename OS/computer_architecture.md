@@ -168,3 +168,76 @@ In a virtualized environment, each Virtual Machine (VM) runs its own operating s
 The hypervisor (like KVM, VMware, or Hyper-V) manages an additional layer of paging that maps guest physical memory to actual host physical memory.
 
 So effectively, paging happens at two levels — inside the guest OS and again by the hypervisor — a concept known as nested paging or two-level address translation.
+
+
+what is load average?
+
+Load average in Linux shows the average number of processes actively running or waiting for CPU or I/O over the past 1, 5, and 15 minutes.
+
+The three values help track short-term and long-term trends in system workload.
+
+A system is considered healthy when the load average is roughly equal to or less than the number of CPU cores.
+
+In short — it’s a real-time indicator of system load, not just CPU utilization.
+
+what is context switching?
+
+3️⃣ Context Switching ⭐⭐⭐⭐
+What Interviewer Asks:
+
+"What is context switching?"
+"Why is it expensive?"
+"How do you detect excessive context switching?"
+
+Your Answer Template:
+Definition:
+"Context switching is when the CPU stops executing one process and starts executing another. The OS saves the current process state and loads the next process state."
+What Gets Saved/Restored:
+Context includes:
+├── CPU registers (Program Counter, Stack Pointer)
+├── Page table pointer
+├── Process state
+└── Open file descriptors
+
+Time: 1-10 microseconds per switch
+Why It's Expensive:
+Direct cost: Saving/loading registers (small)
+Indirect cost: Cache invalidation (BIG!)
+
+When switching from Process A to Process B:
+├── CPU cache contains Process A's data
+├── Switch happens
+├── CPU cache now "cold" for Process B
+└── Must reload from RAM (100× slower)
+
+This cache miss penalty hurts more than the switch itself!
+
+
+what is OOM killer/
+
+What is OOM Killer:
+"When physical RAM and swap are exhausted, Linux's Out-Of-Memory Killer selects and kills a process to free memory. It calculates an OOM score for each process based on memory usage and importance."
+
+New → Ready → Running → Waiting → Terminated
+
+Zombie Process:
+Definition:
+"A zombie process has finished execution but its parent hasn't read its exit status. It takes up a PID slot and shows as <defunct> in process list."
+
+
+
+what is inodes?
+
+What is an Inode:
+"An inode is a data structure that stores file metadata - permissions, ownership, size, timestamps, and pointers to data blocks. Each file has one inode. The inode does NOT store the filename or actual data."
+
+what is load average?
+
+Interview Answer:
+"Load average shows the average number of processes in runnable or uninterruptible state. On a 4-core system:
+
+Load < 4.0: Healthy, CPU has capacity
+Load = 4.0: Fully utilized
+Load > 4.0: Processes waiting for CPU
+
+The three numbers show 1-minute, 5-minute, and 15-minute averages. Increasing trend (1.8 → 2.0 → 2.5) indicates growing problem."
